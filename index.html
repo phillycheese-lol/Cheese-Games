@@ -1,45 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Menu</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-            padding-top: 50px;
-        }
-        .game-button {
-            background-color: #4CAF50;
-            color: white;
-            font-size: 20px;
-            padding: 15px 32px;
-            margin: 20px;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-            text-decoration: none;
-        }
-        .game-button:hover {
-            background-color: #45a049;
-        }
-        .header {
-            font-size: 40px;
-            margin-bottom: 30px;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">Welcome to My Game Website!</div>
-    <p>Select a game to play:</p>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Hub</title>
 
-    <!-- Links to games -->
-    <a href="snake.html" class="game-button">Snake Game</a>
-    <!-- Add more game buttons as you create new games -->
-    <a href="game2.html" class="game-button">Game 2</a>
-    <a href="game3.html" class="game-button">Game 3</a>
+<style>
+body {
+    margin: 0;
+    background: #0f1220;
+    font-family: Arial, sans-serif;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* HEADER */
+.header {
+    font-size: 36px;
+    margin-top: 40px;
+    margin-bottom: 10px;
+}
+
+/* GRID MENU */
+.menu {
+    display: grid;
+    grid-template-columns: repeat(2, 160px);
+    gap: 20px;
+    margin-top: 40px;
+}
+
+/* GAME CARD */
+.card {
+    background: #1e2238;
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    text-decoration: none;
+    color: white;
+    transition: 0.2s;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+
+.card:hover {
+    transform: scale(1.05);
+    background: #2a2f4a;
+}
+
+/* ICON */
+.icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+}
+
+/* TITLE */
+.title {
+    font-size: 16px;
+    opacity: 0.9;
+}
+
+/* SMALL FOOTER */
+.footer {
+    margin-top: 40px;
+    opacity: 0.5;
+    font-size: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">🎮 Game Hub</div>
+
+<div class="menu">
+
+    <!-- SNAKE GAME -->
+    <a class="card" href="snake.html">
+        <div class="icon">🐍🍎</div>
+        <div class="title">Snake+</div>
+    </a>
+
+    <!-- PLACEHOLDER GAME -->
+    <a class="card" href="#">
+        <div class="icon">🎮</div>
+        <div class="title">Coming Soon</div>
+    </a>
+
+    <!-- PLACEHOLDER GAME -->
+    <a class="card" href="#">
+        <div class="icon">🕹️</div>
+        <div class="title">Coming Soon</div>
+    </a>
+
+    <!-- PLACEHOLDER GAME -->
+    <a class="card" href="#">
+        <div class="icon">⭐</div>
+        <div class="title">Coming Soon</div>
+    </a>
+
+</div>
+
+<div class="footer">
+    My GitHub Game Collection
+</div>
 
 </body>
 </html>
