@@ -1,154 +1,311 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-        canvas {
-            background-color: #000;
-            border: 2px solid #fff;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake+</title>
+
+<style>
+body {
+    margin: 0;
+    background: #1e1e2f;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Arial;
+    touch-action: none;
+}
+
+/* CANVAS */
+canvas {
+    border: 3px solid #0b0b0b;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+/* OVERLAYS */
+.overlay {
+    position: absolute;
+    background: rgba(0,0,0,0.85);
+    padding: 25px 40px;
+    border-radius: 15px;
+    text-align: center;
+    color: white;
+}
+
+button {
+    margin-top: 10px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    background: #0072ff;
+    color: white;
+    cursor: pointer;
+}
+
+.settings {
+    display: none;
+}
+</style>
 </head>
+
 <body>
-    <canvas id="snakeCanvas"></canvas>
 
-    <script>
-        // Snake game logic goes here
-        (function() {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const gridSize = 20;
-            const canvasWidth = window.innerWidth;
-            const canvasHeight = window.innerHeight;
-            let snake = [{ x: 150, y: 150 }];
-            let direction = 'right';
-            let food = { x: 0, y: 0 };
-            let score = 0;
-            let gameInterval;
+<canvas id="game"></canvas>
 
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
-            document.body.appendChild(canvas);
+<!-- START SCREEN -->
+<div id="start" class="overlay">
+    <h1>🐍 Snake+</h1>
+    <button onclick="startGame()">Start</button>
+    <button onclick="toggleSettings()">Settings</button>
 
-            function moveSnake() {
-                const head = { ...snake[0] };
-                if (direction === 'right') head.x += gridSize;
-                if (direction === 'left') head.x -= gridSize;
-                if (direction === 'up') head.y -= gridSize;
-                if (direction === 'down') head.y += gridSize;
+    <div id="settings" class="settings">
+        <label>
+            <input type="checkbox" id="bombToggle" checked>
+            Enable Bombs 💣
+        </label>
+    </div>
+</div>
 
-                if (head.x < 0 || head.x >= canvasWidth || head.y < 0 || head.y >= canvasHeight || collision(head)) {
-                    endGame();
-                    return;
-                }
+<!-- GAME OVER -->
+<div id="gameOver" class="overlay" style="display:none;">
+    <h2>Game Over</h2>
+    <p id="scoreText"></p>
+    <button onclick="restart()">Restart</button>
+</div>
 
-                snake.unshift(head);
-                if (head.x === food.x && head.y === food.y) {
-                    score++;
-                    generateFood();
-                } else {
-                    snake.pop();
-                }
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const size = 20;
+const tiles = 24;
+
+canvas.width = size * tiles;
+canvas.height = size * tiles;
+
+/* ---------- STATE ---------- */
+
+let snake, dir, food, bombs, score, loop;
+let bombEnabled = true;
+let bombTimer = 0;
+
+/* ---------- INIT ---------- */
+
+function reset() {
+    snake = [{x:12,y:12}];
+    dir = "right";
+    bombs = [];
+    score = 0;
+    bombTimer = 0;
+    food = spawn();
+}
+
+/* ---------- SPAWN (SAFE INSIDE WALLS) ---------- */
+
+function spawn() {
+    return {
+        x: Math.floor(Math.random() * (tiles - 2)) + 1,
+        y: Math.floor(Math.random() * (tiles - 2)) + 1
+    };
+}
+
+/* ---------- START / RESTART ---------- */
+
+function startGame() {
+    bombEnabled = document.getElementById("bombToggle").checked;
+    document.getElementById("start").style.display = "none";
+    reset();
+    loop = setInterval(update, 100);
+}
+
+function restart() {
+    document.getElementById("gameOver").style.display = "none";
+    startGame();
+}
+
+/* ---------- INPUT (KEYBOARD) ---------- */
+
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp" && dir !== "down") dir = "up";
+    if (e.key === "ArrowDown" && dir !== "up") dir = "down";
+    if (e.key === "ArrowLeft" && dir !== "right") dir = "left";
+    if (e.key === "ArrowRight" && dir !== "left") dir = "right";
+});
+
+/* ---------- INPUT (SWIPE) ---------- */
+
+let sx = 0, sy = 0;
+
+canvas.addEventListener("touchstart", e => {
+    let t = e.touches[0];
+    sx = t.clientX;
+    sy = t.clientY;
+}, {passive:true});
+
+canvas.addEventListener("touchend", e => {
+    let t = e.changedTouches[0];
+    let dx = t.clientX - sx;
+    let dy = t.clientY - sy;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0 && dir !== "left") dir = "right";
+        else if (dx < 0 && dir !== "right") dir = "left";
+    } else {
+        if (dy > 0 && dir !== "up") dir = "down";
+        else if (dy < 0 && dir !== "down") dir = "up";
+    }
+});
+
+/* ---------- BOMBS ---------- */
+
+function spawnBomb() {
+    if (!bombEnabled || bombs.length >= 7) return;
+
+    bombs.push({
+        ...spawn(),
+        life: 180,
+        alpha: 1
+    });
+}
+
+function updateBombs() {
+    bombs.forEach(b => {
+        b.life--;
+        if (b.life < 60) b.alpha -= 0.02;
+    });
+    bombs = bombs.filter(b => b.life > 0 && b.alpha > 0);
+}
+
+/* ---------- GAME LOOP ---------- */
+
+function update() {
+    move();
+    updateBombs();
+    draw();
+
+    bombTimer++;
+    if (bombTimer > 40) {
+        spawnBomb();
+        bombTimer = 0;
+    }
+}
+
+/* ---------- MOVE ---------- */
+
+function move() {
+    let head = {...snake[0]};
+
+    if (dir === "up") head.y--;
+    if (dir === "down") head.y++;
+    if (dir === "left") head.x--;
+    if (dir === "right") head.x++;
+
+    // WALLS
+    if (
+        head.x === 0 || head.x === tiles-1 ||
+        head.y === 0 || head.y === tiles-1
+    ) {
+        end();
+        return;
+    }
+
+    if (
+        snake.some(s => s.x === head.x && s.y === head.y) ||
+        bombs.some(b => b.x === head.x && b.y === head.y)
+    ) {
+        end();
+        return;
+    }
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+        score++;
+        food = spawn();
+    } else {
+        snake.pop();
+    }
+}
+
+/* ---------- DRAW (RESTORED LOOK) ---------- */
+
+function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // grass
+    ctx.fillStyle = "#14532d";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // walls
+    for (let x=0;x<tiles;x++){
+        for (let y=0;y<tiles;y++){
+            if (x===0||y===0||x===tiles-1||y===tiles-1){
+                ctx.fillStyle = "#0b0b0b";
+                ctx.fillRect(x*size,y*size,size,size);
             }
+        }
+    }
 
-            function collision(head) {
-                return snake.some((segment, index) => index !== 0 && segment.x === head.x && segment.y === head.y);
-            }
+    // grid
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    for (let i=0;i<tiles;i++){
+        ctx.beginPath();
+        ctx.moveTo(i*size,0);
+        ctx.lineTo(i*size,canvas.height);
+        ctx.stroke();
 
-            function drawSnake() {
-                ctx.fillStyle = '#00FF00';
-                snake.forEach(segment => ctx.fillRect(segment.x, segment.y, gridSize, gridSize));
-            }
+        ctx.beginPath();
+        ctx.moveTo(0,i*size);
+        ctx.lineTo(canvas.width,i*size);
+        ctx.stroke();
+    }
 
-            function generateFood() {
-                food = {
-                    x: Math.floor(Math.random() * (canvasWidth / gridSize)) * gridSize,
-                    y: Math.floor(Math.random() * (canvasHeight / gridSize)) * gridSize
-                };
-            }
+    // snake glow
+    snake.forEach((s,i)=>{
+        ctx.fillStyle = "#22c55e";
+        ctx.shadowBlur = i===0 ? 15 : 5;
+        ctx.shadowColor = "#22c55e";
+        ctx.fillRect(s.x*size,s.y*size,size-2,size-2);
+    });
+    ctx.shadowBlur = 0;
 
-            function drawFood() {
-                ctx.fillStyle = '#FF0000';
-                ctx.fillRect(food.x, food.y, gridSize, gridSize);
-            }
+    // food
+    ctx.font = "18px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🍎", food.x*size+size/2, food.y*size+size/2);
 
-            function drawScore() {
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = '20px Arial';
-                ctx.fillText('Score: ' + score, 10, 30);
-            }
+    // bombs
+    bombs.forEach(b=>{
+        ctx.globalAlpha = b.alpha;
+        ctx.fillText("💣", b.x*size+size/2, b.y*size+size/2);
+        ctx.globalAlpha = 1;
+    });
 
-            function gameLoop() {
-                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-                moveSnake();
-                drawSnake();
-                drawFood();
-                drawScore();
-            }
+    // score
+    ctx.fillStyle = "white";
+    ctx.textAlign = "left";
+    ctx.fillText("Score: " + score, 10, 15);
+}
 
-            function endGame() {
-                clearInterval(gameInterval);
-                const gameOverMessage = document.createElement('div');
-                gameOverMessage.className = 'game-over';
-                gameOverMessage.innerHTML = `Game Over! Score: ${score}`;
-                document.body.appendChild(gameOverMessage);
-            }
+/* ---------- GAME OVER ---------- */
 
-            function setupControls() {
-                document.addEventListener('keydown', (event) => {
-                    if (event.key === 'ArrowUp' && direction !== 'down') direction = 'up';
-                    if (event.key === 'ArrowDown' && direction !== 'up') direction = 'down';
-                    if (event.key === 'ArrowLeft' && direction !== 'right') direction = 'left';
-                    if (event.key === 'ArrowRight' && direction !== 'left') direction = 'right';
-                });
+function end() {
+    clearInterval(loop);
+    document.getElementById("scoreText").innerText = "Score: " + score;
+    document.getElementById("gameOver").style.display = "block";
+}
 
-                let touchStartX = 0, touchStartY = 0;
-                canvas.addEventListener('touchstart', (e) => {
-                    touchStartX = e.touches[0].clientX;
-                    touchStartY = e.touches[0].clientY;
-                });
+/* ---------- SETTINGS ---------- */
 
-                canvas.addEventListener('touchmove', (e) => {
-                    const touchEndX = e.touches[0].clientX;
-                    const touchEndY = e.touches[0].clientY;
+function toggleSettings() {
+    let s = document.getElementById("settings");
+    s.style.display = s.style.display === "block" ? "none" : "block";
+}
+</script>
 
-                    const deltaX = touchEndX - touchStartX;
-                    const deltaY = touchEndY - touchStartY;
-
-                    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                        if (deltaX > 0 && direction !== 'left') direction = 'right';
-                        else if (deltaX < 0 && direction !== 'right') direction = 'left';
-                    } else {
-                        if (deltaY > 0 && direction !== 'up') direction = 'down';
-                        else if (deltaY < 0 && direction !== 'down') direction = 'up';
-                    }
-
-                    touchStartX = touchEndX;
-                    touchStartY = touchEndY;
-                });
-            }
-
-            function startGame() {
-                generateFood();
-                gameInterval = setInterval(gameLoop, 100);
-            }
-
-            startGame();
-            setupControls();
-        })();
-    </script>
 </body>
 </html>
